@@ -1,0 +1,73 @@
+Install berry conda:
+https://github.com/jjhelmus/berryconda
+
+conda create -n robofan python=3.5
+
+source activate robofan
+
+install darknet nnpack: https://github.com/digitalbrain79/darknet-nnpack
+alternative... https://github.com/shizukachan/darknet-nnpack
+
+edit NNPACK/src/init.c:
+
+214 #if !(defined(__x86_64__) || defined(__i386__)) || defined(__ANDROID__)
+215         static void init_static_hwinfo(void) {
+216                 nnp_hwinfo.cache.l1 = (struct cache_info) {
+217                         .size = 32 * 1024,
+218                         .associativity = 4,
+219                         .threads = 1,
+220                         .inclusive = true,
+221                 };
+222                 nnp_hwinfo.cache.l2 = (struct cache_info) {
+223                         .size = 512 * 1024,
+224                         .associativity = 16,
+225                         .threads = 4,
+226                         .inclusive = false,
+227                 };
+228                 nnp_hwinfo.cache.l3 = (struct cache_info) {
+229                         .size = 512 * 1024,
+230                         .associativity = 16,
+231                         .threads = 1,
+232                         .inclusive = false,
+233                 };
+234         }
+235 #endif
+
+
+
+
+conda install rpi.gpio
+conda install numpy
+conda install cython
+conda install opencv
+conda install Pillow
+
+pip3 install yolo34py
+
+
+--- Download weights / configs
+
+echo "Downloading config files..."
+
+mkdir cfg
+wget -O cfg/coco.data https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/coco.data
+wget -O cfg/yolov3-tiny.cfg https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3-tiny.cfg
+wget -O cfg/tiny-yolo-voc.cfg https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/tiny-yolo-voc.cfg
+wget -O cfg/yolov2-tiny.cfg https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov2-tiny.cfg
+
+mkdir data
+wget -O data/coco.names https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names
+
+echo "Downloading yolov3 weights"
+mkdir weights
+wget -O weights/yolov3-tiny.weights https://pjreddie.com/media/files/yolov3-tiny.weights
+wget -O weights/tiny-yolo-voc.weights https://pjreddie.com/media/files/tiny-yolo-voc.weights
+wget -O weights/yolov2-tiny.weights https://pjreddie.com/media/files/yolov2-tiny.weights
+
+
+--Test
+./darknet detector test cfg/coco.data cfg/yolov3-tiny.cfg weights/yolov3-tiny.weights data/person.jpg
+
+
+
+
