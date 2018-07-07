@@ -1,7 +1,0 @@
-pi_py_darknet/__init__.py
-pi_py_darknet/darknet.py
-pi_py_darknet.egg-info/PKG-INFO
-pi_py_darknet.egg-info/SOURCES.txt
-pi_py_darknet.egg-info/dependency_links.txt
-pi_py_darknet.egg-info/not-zip-safe
-pi_py_darknet.egg-info/top_level.txt
