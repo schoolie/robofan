@@ -5,3 +5,5 @@ dependencies/*
 
 __pycache__/*
 *.egg-info/
+
+results/*
