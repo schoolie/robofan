@@ -134,13 +134,17 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     
     
 def initialize(
-    cfg_path=b"/home/pi/Projects/robofan/darknet-nnpack/cfg/tiny-yolo-voc.cfg",
-    weights_path=b"/home/pi/Projects/robofan/darknet-nnpack/weights/tiny-yolo-voc.weights",
-    data_path=b"/home/pi/Projects/robofan/darknet-nnpack/cfg/voc.data"):
-    
+    cfg_path=b"darknet_cfg/tiny-yolo-voc.cfg",
+    weights_path=b"darknet_cfg/tiny-yolo-voc.weights",
+    data_path=b"darknet_cfg/voc.data"):
+        
+        print('Initializing Darknet')
+
         net = load_net(cfg_path, weights_path, 0)
         meta = load_meta(data_path)
         nnp_initialize()
+        
+        print('--Done!')
 
         return net, meta
     
