@@ -4,4 +4,4 @@ dependencies/*
 *.pyc
 
 __pycache__/*
-*.egginfo/
+*.egg-info/
