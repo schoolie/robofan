@@ -17,9 +17,9 @@ def move(revolutions, direction):
 
     microstep_resolution = 1 
     steps_per_rev = 200
-    step_delay = 0.001
+    step_delay = 0.004
     
-    steps = revolutions * steps_per_rev * microstep_resolution
+    steps = int(revolutions * steps_per_rev * microstep_resolution)
     
     GPIO.output(pins['dir'], direction)
 
