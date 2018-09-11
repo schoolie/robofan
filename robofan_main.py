@@ -14,6 +14,7 @@ class RoboFan(object):
     def __init__(self):
         ## Initialize darknet
         self.net, self.meta = initialize()
+        self.camera = self.init_camera()
 
 
     def init_camera(self):
@@ -96,7 +97,7 @@ class RoboFan(object):
             target_person = people[0]
             target_x, target_y = target_person['target']
 
-            gain = 1/240 ## rough estimate of 'revolutions' per pixel
+            gain = 0.2/110 ## rough estimate of 'revolutions' per pixel
             error = abs(target_x - img_width / 2)
             pterm = error * gain
 
@@ -134,8 +135,6 @@ class RoboFan(object):
 
     def run(self, result_widget=None, text_widget=None):
 
-        camera = self.init_camera()
-
         n = 0
         predictions = []
 
@@ -143,7 +142,7 @@ class RoboFan(object):
 
             img_filename = 'capture.jpg'
 
-            camera.capture(img_filename)
+            self.camera.capture(img_filename)
 
             people = self.process_image(img_filename, n=n, result_widget=result_widget, text_widget=text_widget)
 
