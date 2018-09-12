@@ -19,9 +19,12 @@ class RoboFan(object):
 
     def init_camera(self):
         ## Initialize camera
+        
+        self.resolution = (640, 480)
+        
         camera = PiCamera()
         camera.rotation = 180
-        camera.resolution = (640, 480)
+        camera.resolution = self.resolution
         time.sleep(2)
 
         return camera
@@ -80,20 +83,20 @@ class RoboFan(object):
 
         people = self.detect_people(img_filename)
 
-        if result_widget is not None:
-            ## Label image with OpenCV and save
-            img = self.label(img_filename, people)
-            out_file = 'results/test_{}.jpg'.format(n)
-            cv2.imwrite(out_file, img)
-    #         display(Image(filename=out_file, width=640, height=480))
+        ## Label image with OpenCV and save
+        img = self.label(img_filename, people)
+        out_file = 'predicted.jpg'.format(n)
+        cv2.imwrite(out_file, img)
 
-            file = open(out_file, "rb")
-            image = file.read()
+        file = open(out_file, "rb")
+        image = file.read()
+            
+        if result_widget is not None:
             result_widget.value = image
 
         ## Drive stepper
         if len(people) > 0:
-            img_width = 640
+            img_width = self.resolution[0]
             target_person = people[0]
             target_x, target_y = target_person['target']
 
@@ -135,17 +138,23 @@ class RoboFan(object):
 
     def run(self, result_widget=None, text_widget=None):
 
+        
         n = 0
         predictions = []
 
         while True:
-
+            
+            start_time = time.time()
+            
             img_filename = 'capture.jpg'
 
             self.camera.capture(img_filename)
 
             people = self.process_image(img_filename, n=n, result_widget=result_widget, text_widget=text_widget)
 
+            elapsed_time = time.time() - start_time
+            print(n, len(people), 'total {:5.2f} seconds'.format(elapsed_time))
+            
             n += 1
 
 
