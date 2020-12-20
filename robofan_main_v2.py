@@ -5,6 +5,7 @@ import time
 import cv2
 from IPython.display import Image, display
 
+from picamera.array import PiRGBArray
 from picamera import PiCamera
 
 import os
@@ -18,7 +19,7 @@ import matplotlib.pyplot as plt
 class RoboFan(object):
     def __init__(self):
         ## Initialize darknet        
-        #self.camera = self.init_camera()
+        self.init_camera()
         self.init_detector()
         
 
@@ -26,14 +27,15 @@ class RoboFan(object):
     def init_camera(self):
         ## Initialize camera
         
-        self.resolution = (640, 480)
+        self.resolution = (1280, 720)
         
-        camera = PiCamera()
-        camera.rotation = 180
-        camera.resolution = self.resolution
-        time.sleep(2)
+        self.camera = PiCamera()
+        self.camera.rotation = 0
+        self.camera.resolution = self.resolution
 
-        return camera
+        self.rawCapture = PiRGBArray(self.camera)
+
+        time.sleep(1)
 
 
 
@@ -41,57 +43,18 @@ class RoboFan(object):
         """ Uses opencv to annotate image with bounding boxes and labels of detected objects """
 
         for n, person in enumerate(people):
+            
+            if person['score'] > 0.5:
 
-            cv2.rectangle(img, person['top_left'], person['bottom_right'], (255, 0, 0), thickness=2)
+                cv2.rectangle(img, person['top_left'], person['bottom_right'], (255, 0, 0), thickness=2)
 
-            cv2.circle(img, person['target'], 3, (255,255,0)) ## target torso
+                cv2.circle(img, person['target'], 3, (255,255,0)) ## target torso
 
-            label = '{}[{}]:{:06.3f}'.format(person['category'], n, person['score']*100)
-            cv2.putText(img, label, person['center'], cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,0))
+                label = '{}[{}]:{:06.3f}'.format(person['category'], n, person['score']*100)
+                cv2.putText(img, label, person['center'], cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,0))
 
         return img
 
-
-#     def process_image(self, img_filename, result_widget=None, text_widget=None, n=0):
-
-#         start_time = time.time()
-
-#         people = self.detect_people(img_filename)
-
-#         ## Label image with OpenCV and save
-#         img = self.label(img_filename, people)
-#         out_file = 'predicted.jpg'.format(n)
-#         cv2.imwrite(out_file, img)
-
-#         file = open(out_file, "rb")
-#         image = file.read()
-            
-#         if result_widget is not None:
-#             result_widget.value = image
-
-#         ## Drive stepper
-#         if len(people) > 0:
-#             img_width = self.resolution[0]
-#             target_person = people[0]
-#             target_x, target_y = target_person['target']
-
-#             gain = 0.2/110 ## rough estimate of 'revolutions' per pixel
-#             error = abs(target_x - img_width / 2)
-#             pterm = error * gain
-
-#             if target_x < img_width * 0.45:
-#                 print('Person detected at {}: moving right'.format(target_x))
-#                 move(pterm, 1)
-
-#             elif target_x > img_width * 0.55:
-#                 print('Person detected at {}: moving left'.format(target_x))
-#                 move(pterm, 0)
-
-
-#         elapsed_time = time.time() - start_time
-#         print(n, len(people), '{:5.2f} seconds'.format(elapsed_time))
-
-#         return people
 
     def process_image(self, image, result_widget=None, text_widget=None, n=0):
         start_time = time.time()
@@ -111,8 +74,15 @@ class RoboFan(object):
 
         ## Drive stepper
         if len(people) > 0:
+            
+            best = 0
+            for person in people:
+                if person['score'] > best:
+                    target_person = person
+                    best = person['score']
+                    
+            
             img_width = self.width
-            target_person = people[0]
             target_x, target_y = target_person['target']
 
             gain = 0.2/110 ## rough estimate of 'revolutions' per pixel
@@ -212,36 +182,6 @@ class RoboFan(object):
         self.interpreter = interpreter
         self.labels = labels
 
-        
-
-#     def detect_people(self, img_filename):
-#         """Basic person detector. Runs yolo model on a file, filters result to only return 'person' """
-
-#         results = detect(self.net, self.meta, bytes(img_filename, 'utf-8'))
-
-#         people = []
-
-#         for cat, score, bounds in results:
-#             if cat == b'person':
-
-#                 x, y, w, h = bounds
-
-#                 center = (int(x), int(y))
-#                 size = (w, h)
-#                 top_left = (int(x - w / 2), int(y - h / 2))
-#                 bottom_right = (int(x + w / 2), int(y + h / 2))
-#                 target = (int(x), int(y-h/6))
-
-#                 people.append(dict(
-#                     category=cat.decode("utf-8"), 
-#                     score=score, 
-#                     center=center,
-#                     top_left=top_left,
-#                     bottom_right=bottom_right,
-#                     target=target,
-#                 ))
-
-#         return people
     
     def detect_people(self, image, n=0):
         
@@ -268,7 +208,9 @@ class RoboFan(object):
         people = []
         
         for cls, score, bounds in zip(classes, scores, boxes):
+            
             cat = self.labels[int(cls)]
+            
             if cat == 'person':
 #             if True:
         
@@ -350,17 +292,18 @@ class RoboFan(object):
         while True:
             
             start_time = time.time()
-                        
-            img_filename = 'capture.jpg'
+            
+            self.camera.capture(self.rawCapture, format="bgr")
+            image = self.rawCapture.array                  
 
-            self.camera.capture(img_filename)
-
-            people = self.process_image(img_filename, n=n, result_widget=result_widget, text_widget=text_widget)
+            people = self.process_image(image, n=n, result_widget=result_widget, text_widget=text_widget)
 
             elapsed_time = time.time() - start_time
             print(n, len(people), 'total {:5.2f} seconds'.format(elapsed_time))
             
             n += 1
+
+            self.rawCapture.truncate(0)
 
 
 ## Run script
