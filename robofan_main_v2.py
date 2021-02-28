@@ -1,5 +1,5 @@
 # coding: utf-8
-# from stepper.driver import move
+from stepper.driver import move
 import time
 # from pi_py_darknet.darknet import initialize, detect
 import cv2
@@ -14,7 +14,48 @@ import sys
 from threading import Thread
 import importlib.util
 import matplotlib.pyplot as plt
+        
+    
+class VideoStream:
+    """Camera object that controls video streaming from the Picamera"""
+    def __init__(self,resolution=(640,480),framerate=30):
+        # Initialize the PiCamera and the camera image stream
+        self.stream = cv2.VideoCapture(0)
+        ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        ret = self.stream.set(3,resolution[0])
+        ret = self.stream.set(4,resolution[1])
+            
+        # Read first frame from the stream
+        (self.grabbed, self.frame) = self.stream.read()
 
+    # Variable to control when the camera is stopped
+        self.stopped = False
+
+    def start(self):
+    # Start the thread that reads frames from the video stream
+        Thread(target=self.update,args=()).start()
+        return self
+
+    def update(self):
+        # Keep looping indefinitely until the thread is stopped
+        while True:
+            # If the camera is stopped, stop the thread
+            if self.stopped:
+                # Close camera resources
+                self.stream.release()
+                return
+
+            # Otherwise, grab the next frame from the stream
+            (self.grabbed, self.frame) = self.stream.read()
+
+    def read(self):
+    # Return the most recent frame
+        return self.frame
+
+    def stop(self):
+    # Indicate that the camera and thread should be stopped
+        self.stopped = True
+        
         
 class RoboFan(object):
     def __init__(self):
@@ -29,11 +70,13 @@ class RoboFan(object):
         
         self.resolution = (1280, 720)
         
-        self.camera = PiCamera()
-        self.camera.rotation = 0
-        self.camera.resolution = self.resolution
+        self.videostream = VideoStream(resolution=self.resolution,framerate=10).start()
 
-        self.rawCapture = PiRGBArray(self.camera)
+#         self.camera = PiCamera()
+#         self.camera.rotation = 0
+#         self.camera.resolution = self.resolution
+
+#         self.rawCapture = PiRGBArray(self.camera)
 
         time.sleep(1)
 
@@ -61,15 +104,9 @@ class RoboFan(object):
 
         people = self.detect_people(image)
 
-        ## Label image with OpenCV and save
-        img = self.label(image, people)
-        out_file = 'predicted.jpg'.format(n)
-#         cv2.imwrite(out_file, img)
-
-#         file = open(out_file, "rb")
-#         image = file.read()
-
         if result_widget is not None:
+            ## Label image with OpenCV and save
+            img = self.label(image, people)
             result_widget.value = cv2.imencode('.jpg', img)[1].tostring()
 
         ## Drive stepper
@@ -82,20 +119,20 @@ class RoboFan(object):
                     best = person['score']
                     
             
-            img_width = self.width
+            img_width = self.image.shape[1]
             target_x, target_y = target_person['target']
 
-            gain = 0.2/110 ## rough estimate of 'revolutions' per pixel
+            gain = 0.12/110 #0.2/110 ## rough estimate of 'revolutions' per pixel
             error = abs(target_x - img_width / 2)
             pterm = error * gain
 
             if target_x < img_width * 0.45:
-                print('Person detected at {}: moving right'.format(target_x))
-#                 move(pterm, 1)
+                print('Person detected at {}: moving left'.format(target_x))
+                move(pterm, 1)
 
             elif target_x > img_width * 0.55:
-                print('Person detected at {}: moving left'.format(target_x))
-#                 move(pterm, 0)
+                print('Person detected at {}: moving right'.format(target_x))
+                move(pterm, 0)
 
 
         elapsed_time = time.time() - start_time
@@ -211,7 +248,7 @@ class RoboFan(object):
             
             cat = self.labels[int(cls)]
             
-            if cat == 'person':
+            if cat == 'person' and score > 0.6:
 #             if True:
         
                 ymin = int(max(1,(bounds[0] * imH)))
@@ -236,66 +273,20 @@ class RoboFan(object):
 
         return people
         
-    def temp(self):
-        # Loop over all detections and draw detection box if confidence is above minimum threshold
-        for i in range(len(scores)):
-            if ((scores[i] > self.min_conf_threshold) and (scores[i] <= 1.0)):
-
-
-                object_name = self.labels[int(classes[i])] # Look up object name from "labels" array using class index
-                if object_name == 'person':
-#                 if True:
-                    # Get bounding box coordinates and draw box
-                    # Interpreter can return coordinates that are outside of image dimensions, need to force them to be within image using max() and min()
-                    ymin = int(max(1,(boxes[i][0] * imH)))
-                    xmin = int(max(1,(boxes[i][1] * imW)))
-                    ymax = int(min(imH,(boxes[i][2] * imH)))
-                    xmax = int(min(imW,(boxes[i][3] * imW)))
-
-                    cv2.rectangle(image, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
-
-                    # Draw label
-                    label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
-                    labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-                    label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
-                    cv2.rectangle(image, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-                    cv2.putText(image, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
-
-
-        if result_widget is not None:
-            result_widget.value = cv2.imencode('.jpg', image)[1].tostring()
-        
         
     def test_run(self, result_widget=None, text_widget=None):
 
+        import glob
+        images = glob.glob('test_captures/*')
+
         n = 0
-        predictions = []
-        file_found = True
-        while file_found and n < 10:
-
-            img_filename = 'test_captures/raw_{}.jpg'.format(n+20)
-
-            try:
-                people = self.process_image(img_filename, n=n, result_widget=result_widget, text_widget=text_widget)
-
-            except FileNotFoundError:
-                file_found = False
-            n += 1
-
-
-    def run(self, result_widget=None, text_widget=None):
-
         
-        n = 0
-        predictions = []
-
-        while True:
+        for impath in images:
             
             start_time = time.time()
+                
+            image = cv2.imread(impath)            
             
-            self.camera.capture(self.rawCapture, format="bgr")
-            image = self.rawCapture.array                  
-
             people = self.process_image(image, n=n, result_widget=result_widget, text_widget=text_widget)
 
             elapsed_time = time.time() - start_time
@@ -304,7 +295,38 @@ class RoboFan(object):
             n += 1
 
             self.rawCapture.truncate(0)
+            
+            self.camera.close()
 
+
+    def run(self, result_widget=None, text_widget=None, max_n=None):
+
+        n = 0
+        predictions = []
+
+        while True:
+            
+            start_time = time.time()
+            
+#             self.camera.capture(self.rawCapture, format="bgr")
+            image = self.videostream.read()
+#             image = self.rawCapture.array    
+            image = cv2.flip(image, flipCode=-1)
+            self.image = image
+
+            people = self.process_image(image, n=n, result_widget=result_widget, text_widget=text_widget)
+
+            elapsed_time = time.time() - start_time
+            print(n, len(people), 'total {:5.2f} seconds'.format(elapsed_time))
+            
+            n += 1
+
+#             self.rawCapture.truncate(0)
+
+            if max_n is not None:
+                if n > max_n:
+                    break
+                    self.camera.close()
 
 ## Run script
 if __name__ == '__main__':
