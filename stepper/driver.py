@@ -1,48 +1,50 @@
 import time
-import RPi.GPIO as GPIO
+import pigpio
 
+class StepperDriver():
+    def __init__(self, pins=dict(step=18, direction=23, enable=24)):
+        self.pins = pins
+        self.pi = pigpio.pi()
 
+        for name, pin_num in self.pins.items():
+            self.pi.set_mode(pin_num, pigpio.OUTPUT)
 
-def move(revolutions, direction, rev_per_sec=1):
-    
-    GPIO.setmode(GPIO.BCM)
-    
-    pins = {
-        'step':   18,
-        'dir':    23,
-        'enable': 24,
-    }
-    
-    for name, pin_num in pins.items():
-        GPIO.setup(pin_num, GPIO.OUT)
-    
-    microstep_resolution = 1
-    steps_per_rev = 200
-    
-    step_delay = 1 / (steps_per_rev * rev_per_sec)
-    
-    steps = int(revolutions * steps_per_rev * microstep_resolution)
-    
-    
-    ## Drive motor
-    GPIO.output(pins['enable'], GPIO.LOW) ## enable FETs
-    
-    GPIO.output(pins['dir'], direction)
-    
-    for n in range(steps):
+    def move(self, revolutions, direction, rev_per_sec=1):
+
+        rev_per_sec = float(rev_per_sec)
+        microstep_resolution = 8
+        steps_per_rev = 200
         
-        GPIO.output(pins['step'], GPIO.HIGH)
-        time.sleep(step_delay)
-        GPIO.output(pins['step'], GPIO.LOW)
-        time.sleep(step_delay)
-    
-    time.sleep(0.75)
-    GPIO.output(pins['enable'], GPIO.HIGH) ## disable FETs
-    
+        step_delay = 1 / (steps_per_rev * microstep_resolution * rev_per_sec)
+        
+        steps = int(revolutions * steps_per_rev * microstep_resolution)
+            
+        ## Drive motor
+        self.pi.write(self.pins['enable'], 0) ## enable FETs
+        self.pi.write(self.pins['direction'], direction) ## Set direction pin
+        
+        wf=[]
+        self.pi.wave_clear() # start a new waveform
+
+        print(steps, step_delay*1e6)
+        for n in range(steps):
+            wf.append(pigpio.pulse(1<<self.pins['step'], 0, 1 * step_delay*1e6))
+            wf.append(pigpio.pulse(0, 1<<self.pins['step'], 1 * step_delay*1e6))
+        
+        self.pi.wave_add_generic(wf)
+
+        wid = self.pi.wave_create()
+        self.pi.wave_send_once(wid)
+
+        time.sleep(0.1)
+        self.pi.write(self.pins['enable'], 1) ## disable FETs
+        
 
 #     GPIO.cleanup() # cleanup all GPIO
 
 if __name__ == '__main__':
-    move(2, 0)
-    time.sleep(0.25)
-    move(2, -1)
+    stepper_driver = StepperDriver()
+
+    stepper_driver.move(0.5, 0)
+    time.sleep(2)
+    stepper_driver.move(0.5, 1)
