@@ -118,7 +118,7 @@ class RoboFan(object):
             img_width = self.image.shape[1]
             target_x, target_y = target_person['target']
 
-            gain = 0.12/110 #0.2/110 ## rough estimate of 'revolutions' per pixel
+            gain = 0.2/110 #0.2/110 ## rough estimate of 'revolutions' per pixel
             error = abs(target_x - img_width / 2)
             pterm = error * gain
 
@@ -245,7 +245,6 @@ class RoboFan(object):
             cat = self.labels[int(cls)]
             
             if cat == 'person' and score > 0.6:
-#             if True:
         
                 ymin = int(max(1,(bounds[0] * imH)))
                 xmin = int(max(1,(bounds[1] * imW)))
@@ -307,7 +306,7 @@ class RoboFan(object):
 #             self.camera.capture(self.rawCapture, format="bgr")
             image = self.videostream.read()
 #             image = self.rawCapture.array    
-            image = cv2.flip(image, flipCode=-1)
+            # image = cv2.flip(image, flipCode=-1)
             self.image = image
 
             people = self.process_image(image, n=n, result_widget=result_widget, text_widget=text_widget)
