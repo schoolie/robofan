@@ -1,5 +1,5 @@
 # coding: utf-8
-from stepper.driver import move
+from stepper.driver import StepperDriver
 import time
 # from pi_py_darknet.darknet import initialize, detect
 import cv2
@@ -67,16 +67,12 @@ class RoboFan(object):
 
     def init_camera(self):
         ## Initialize camera
+
+        self.stepper_driver = StepperDriver()
         
         self.resolution = (1280, 720)
         
         self.videostream = VideoStream(resolution=self.resolution,framerate=10).start()
-
-#         self.camera = PiCamera()
-#         self.camera.rotation = 0
-#         self.camera.resolution = self.resolution
-
-#         self.rawCapture = PiRGBArray(self.camera)
 
         time.sleep(1)
 
@@ -128,15 +124,15 @@ class RoboFan(object):
 
             if target_x < img_width * 0.45:
                 print('Person detected at {}: moving left'.format(target_x))
-                move(pterm, 1)
+                self.stepper_driver.move(pterm, 1)
 
             elif target_x > img_width * 0.55:
                 print('Person detected at {}: moving right'.format(target_x))
-                move(pterm, 0)
+                self.stepper_driver.move(pterm, 0)
 
 
         elapsed_time = time.time() - start_time
-        print(n, len(people), '{:5.2f} seconds'.format(elapsed_time))
+        # print(n, len(people), '{:5.2f} seconds'.format(elapsed_time))
 
         return people
     
@@ -317,7 +313,7 @@ class RoboFan(object):
             people = self.process_image(image, n=n, result_widget=result_widget, text_widget=text_widget)
 
             elapsed_time = time.time() - start_time
-            print(n, len(people), 'total {:5.2f} seconds'.format(elapsed_time))
+            # print(n, len(people), 'total {:5.2f} seconds'.format(elapsed_time))
             
             n += 1
 
