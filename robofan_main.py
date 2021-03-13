@@ -58,11 +58,14 @@ class VideoStream:
         
         
 class RoboFan(object):
-    def __init__(self):
+    def __init__(self, max_speed=1, jerk=999999, microstep_resolution=8):
         ## Initialize darknet        
         self.init_camera()
         self.init_detector()
-        
+
+        self.max_speed = max_speed
+        self.jerk = jerk
+        self.microstep_resolution = microstep_resolution
 
 
     def init_camera(self):
@@ -122,14 +125,25 @@ class RoboFan(object):
             error = abs(target_x - img_width / 2)
             pterm = error * gain
 
+            move = False
             if target_x < img_width * 0.45:
                 print('Person detected at {}: moving left'.format(target_x))
-                self.stepper_driver.move(pterm, 1)
+                direction = 1
+                move = True
 
             elif target_x > img_width * 0.55:
                 print('Person detected at {}: moving right'.format(target_x))
-                self.stepper_driver.move(pterm, 0)
+                direction = 0
+                move = True
 
+            if move:
+                self.stepper_driver.move(
+                    pterm, 
+                    direction=direction, 
+                    microstep_resolution=self.microstep_resolution, 
+                    rev_per_sec=self.max_speed,
+                    max_jerk=self.jerk,
+                )
 
         elapsed_time = time.time() - start_time
         # print(n, len(people), '{:5.2f} seconds'.format(elapsed_time))
@@ -326,7 +340,7 @@ class RoboFan(object):
 ## Run script
 if __name__ == '__main__':
     print('running')
-    robofan = RoboFan()
+    RoboFan(max_speed=0.8, jerk=200, microstep_resolution=8)
     robofan.run()
 
 
