@@ -1,0 +1,6 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "misc")(type "Legacy")(uri "${KIPRJMOD}/misc.lib")(options "")(descr ""))
+  (lib (name "robofan_electrical-rescue")(type "KiCad")(uri "${KIPRJMOD}/robofan_electrical-rescue.kicad_sym")(options "")(descr ""))
+  (lib (name "robofan_electrical_2-rescue")(type "KiCad")(uri "${KIPRJMOD}/robofan_electrical_2-rescue.kicad_sym")(options "")(descr ""))
+)
